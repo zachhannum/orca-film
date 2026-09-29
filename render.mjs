@@ -6,6 +6,9 @@
 //
 // --clean leaves out the film grain, for the GIF.
 //
+// --page loop.html --query ui=ui-light --width 1200 --height 750 --scale 1.6 --silent
+// renders the loop instead: another page, another size, and no score.
+//
 // --sub N renders N sub-frames per output frame and blends them, for
 // motion blur.
 import { chromium } from 'playwright';
@@ -22,14 +25,18 @@ const FPS = +arg('fps', 60);
 const SUB = +arg('sub', 2);
 const WORKERS = +arg('workers', Math.max(2, Math.min(8, os.cpus().length - 2)));
 const OUT = arg('out', 'orca.mp4');
-const url = pathToFileURL('index.html').href + '?render=1' + (process.argv.includes('--clean') ? '&clean=1' : '');
+const SILENT = process.argv.includes('--silent');
+const VIEW = { width: +arg('width', 1920), height: +arg('height', 1080) };
+const SCALE = +arg('scale', 1);
+const query = [arg('query', ''), `fps=${FPS}`].filter(Boolean).join('&');
+const url = pathToFileURL(arg('page', 'index.html')).href + '?render=1&' + query + (process.argv.includes('--clean') ? '&clean=1' : '');
 
 mkdirSync('build/segments', { recursive: true });
 const browser = await chromium.launch({ args: ['--font-render-hinting=none', '--force-color-profile=srgb'] });
 
 async function openPage(own) {
   const br = own ? await chromium.launch({ args: ['--font-render-hinting=none', '--force-color-profile=srgb'] }) : browser;
-  const ctx = await br.newContext({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+  const ctx = await br.newContext({ viewport: VIEW, deviceScaleFactor: SCALE });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.error('pageerror:', e.message));
   await page.goto(url);
@@ -41,9 +48,11 @@ async function openPage(own) {
 const first = await openPage();
 const total = await first.evaluate(() => O.T.total);
 const from = +arg('from', 0), to = +arg('to', total);
-console.log('rendering score…');
-const wav = await first.evaluate(() => O.audio.wavBase64());
-writeFileSync('build/score.wav', Buffer.from(wav, 'base64'));
+if (!SILENT) {
+  console.log('rendering score…');
+  const wav = await first.evaluate(() => O.audio.wavBase64());
+  writeFileSync('build/score.wav', Buffer.from(wav, 'base64'));
+}
 await first.context().close();
 
 const frames = Math.round((to - from) * FPS);
@@ -87,9 +96,11 @@ writeFileSync('build/segments/list.txt', segs.map((s) => `file '${s.replace('bui
 
 // Join the segments and lay the score under them.
 const aoff = from > 0 ? ['-ss', String(from)] : [];
+const audio = SILENT ? ['-an'] : [...aoff, '-i', 'build/score.wav', '-map', '0:v', '-map', '1:a',
+  '-af', 'loudnorm=I=-14:TP=-1.2:LRA=11', '-ar', '48000', '-c:a', 'aac', '-b:a', '320k', '-shortest'];
 await new Promise((res, rej) => {
-  const ff = spawn('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'build/segments/list.txt', ...aoff, '-i', 'build/score.wav',
-    '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-af', 'loudnorm=I=-14:TP=-1.2:LRA=11', '-ar', '48000', '-c:a', 'aac', '-b:a', '320k', '-shortest', '-movflags', '+faststart', OUT], { stdio: 'inherit' });
+  const ff = spawn('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'build/segments/list.txt', ...audio,
+    '-c:v', 'copy', '-movflags', '+faststart', OUT], { stdio: 'inherit' });
   ff.on('close', (c) => (c === 0 ? res() : rej(new Error('ffmpeg ' + c))));
 });
 if (!process.argv.includes('--keep')) rmSync('build/segments', { recursive: true, force: true });

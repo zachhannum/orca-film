@@ -7,7 +7,8 @@ A 54-second film about orca, drawn in HTML and JavaScript. Every frame is a func
 ## Files
 
 - `index.html` plays the film in a browser, with sound. Space pauses, the arrow keys skip two seconds.
-- `js/world.js` holds the shared layers: the sea, the surface, the cursor, grain and the scene timing.
+- `js/world.js` holds the shared layers: the sea, the surface, grain and the scene timing.
+- `js/cursor.js` draws the pointer and the ring a click leaves.
 - `js/window.js` shows the Obsidian window. It stacks frames of real Obsidian and moves a camera over them.
 - `js/desk.js` keeps one window on screen from writing to export, so the camera moves between those scenes without a cut.
 - `js/scenes/` holds one file per scene.
@@ -40,6 +41,17 @@ node render.mjs --from 22 --to 30    # one section
 node stills.mjs 4 13.5 26.9          # frames at those times
 node formats.mjs                     # every release format to dist/, with the GIF
 ```
+
+## Loop
+
+The loop is the window alone, from the notes to the export, for the landing page of orca's site. It plays the film's own window scenes with the camera still, and it has no sea, captions or sound. It is 27 seconds long, and its last frame fades into its first.
+
+- `loop.html` plays the loop in a browser. Add `?ui=ui-light` for the light scheme.
+- `js/loop.js` holds its clock. It plays the film's times and cuts the spans where only the film's camera moves.
+- `js/scenes/loop-notes.js` opens the loop on the book note, where a click opens the chapter.
+- `loop.mjs` renders the loop in both schemes to `dist/loop/`, as MP4 and WebM. With `--into <folder>`, it copies each clip there unless it looks the same as the clip already there.
+
+The film spec writes the light frames to `assets/ui-light/`. The shots workflow in obsidian-orca runs `loop.mjs` at a pinned commit of this repo.
 
 ## Release
 
