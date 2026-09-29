@@ -14,6 +14,11 @@ const POSTERS = [
   ['poster-design.png', 28.9],
 ];
 
+// The part of the film the GIF holds, in seconds: from the notes to the PDF,
+// without the title and the end card. The film workflow commits it to
+// media/orca.gif, which Git LFS keeps.
+const GIF = { from: 7.75, to: 46.5, fps: 12, width: 720 };
+
 if (!existsSync(MASTER)) throw new Error(`no ${MASTER}: run node render.mjs first`);
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
@@ -43,3 +48,11 @@ execFileSync('node', ['stills.mjs', ...POSTERS.map(([, t]) => String(t))], { std
 for (const [name, t] of POSTERS) {
   copyFileSync(`build/stills/t${t.toFixed(2).padStart(6, '0')}.png`, `${OUT}/${name}`);
 }
+
+// The GIF for a README. It comes from its own render without the grain,
+// because a GIF cannot compress noise that changes on every frame.
+execFileSync('node', ['render.mjs', '--clean', '--sub', '1', '--fps', String(GIF.fps),
+  '--from', String(GIF.from), '--to', String(GIF.to), '--out', 'build/gif.mp4'], { stdio: 'inherit' });
+ffmpeg('-i', 'build/gif.mp4', '-filter_complex',
+  `scale=${GIF.width}:-2:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];` +
+  '[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle', `${OUT}/orca.gif`);

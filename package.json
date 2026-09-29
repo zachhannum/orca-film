@@ -6,7 +6,8 @@
   "scripts": {
     "render": "node render.mjs",
     "formats": "node formats.mjs",
-    "stills": "node stills.mjs"
+    "stills": "node stills.mjs",
+    "loop": "node loop.mjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

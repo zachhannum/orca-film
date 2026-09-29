@@ -101,3 +101,20 @@ jobs:
           gh release create "$tag" dist/* \
             --title "Film $(date -u +%Y-%m-%d) from obsidian-orca ${orca:0:7}" \
             --notes "The frames are real Obsidian on the sample book, taken from zachhannum/obsidian-orca at ${orca} (${ORCA_REF})."
+
+      # The GIF goes on main for READMEs to show. Git LFS keeps it, by
+      # .gitattributes. Main can move during the render, so it rebases first.
+      - name: gif
+        working-directory: film
+        run: |
+          orca="$(git -C ../orca rev-parse HEAD)"
+          git lfs install --local
+          mkdir -p media
+          cp dist/orca.gif media/orca.gif
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add media/orca.gif
+          git diff --cached --quiet && exit 0
+          git commit -m "Update the film GIF from obsidian-orca ${orca:0:7}"
+          git pull --rebase origin main
+          git push origin HEAD:main

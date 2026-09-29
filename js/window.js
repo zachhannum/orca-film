@@ -6,6 +6,8 @@
   const F = window.FRAMES;
   const W = F.window.width, H = F.window.height;
   O.WIN = { w: W, h: H };
+  // The folder the frames are in: the loop names one per scheme.
+  O.UI = O.UI || 'assets/ui';
 
   O.shot = (name) => {
     const f = F.frames.find((x) => x.name === name);
@@ -22,7 +24,7 @@
   // Camera keys are [t, [x, y, scale]]: where the window's top left
   // corner sits on screen, and its scale. O.aim puts a window point at a
   // screen point instead.
-  O.HOME = [640, 165, 1];
+  O.HOME = O.loop ? [0, 0, 1] : [640, 165, 1];
   O.aim = (fx, fy, s, sx, sy) => [sx - fx * s, sy - fy * s, s];
 
   // A name can be `layer@frame`, for a frame shown in two layers.
@@ -31,7 +33,7 @@
     const layers = {};
     const names = list.map((n) => {
       const [key, file] = n.split('@');
-      const img = O.h(`<img class="ol" src="assets/ui/${file || key}.jpg" alt="">`);
+      const img = O.h(`<img class="ol" src="${O.UI}/${file || key}.jpg" alt="">`);
       el.appendChild(img);
       layers[key] = img;
       return key;
@@ -63,7 +65,7 @@
     const box = O.shot(names[0]).marks.scroller;
     const el = O.h(`<div class="strip" style="left:${box.x}px;top:${box.y}px;width:${box.width}px;height:${box.height}px"></div>`);
     const imgs = names.map((n) => {
-      const img = O.h(`<img class="ol" src="assets/ui/${n}.jpg" alt="">`);
+      const img = O.h(`<img class="ol" src="${O.UI}/${n}.jpg" alt="">`);
       img.style.left = -box.x + 'px';
       img.style.top = -box.y + 'px';
       img.style.clipPath = `inset(${box.y}px ${W - box.x - box.width}px ${H - box.y - box.height}px ${box.x}px)`;
