@@ -1,0 +1,103 @@
+name: film
+
+# Builds the film from nothing: takes its frames in real Obsidian from
+# obsidian-orca at a ref, renders it, and publishes every format as a
+# release. The frames are pictures of a macOS window, so it runs there.
+on:
+  workflow_dispatch:
+    inputs:
+      orca-ref:
+        description: The obsidian-orca branch, tag or commit to take the frames from
+        default: main
+  repository_dispatch:
+    types: [orca-release]
+
+concurrency:
+  group: film
+  cancel-in-progress: false
+
+jobs:
+  film:
+    name: take, render and release the film
+    runs-on: macos-latest
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    env:
+      ORCA_REF: ${{ github.event.inputs.orca-ref || github.event.client_payload.ref || 'main' }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: film
+
+      - uses: actions/checkout@v5
+        with:
+          repository: zachhannum/obsidian-orca
+          ref: ${{ env.ORCA_REF }}
+          path: orca
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            orca/package-lock.json
+            orca/site/package-lock.json
+            film/package-lock.json
+
+      - name: tools
+        run: brew install poppler ffmpeg
+
+      - run: npm ci --prefer-offline --no-audit --no-fund
+        working-directory: orca
+
+      # The site's faces go inside Obsidian, as they do for the site's shots.
+      - run: npm ci --prefer-offline --no-audit --no-fund
+        working-directory: orca/site
+
+      # The version is pinned in the harness, so the key moves when the pin does.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.obsidian-cache
+          key: obsidian-${{ runner.os }}-${{ hashFiles('orca/e2e/harness/launch.ts') }}
+
+      - name: frames
+        run: npm run film
+        working-directory: orca
+        env:
+          ORCA_FILM_OUT: ${{ github.workspace }}/film/assets
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: frames
+          path: |
+            film/assets/ui/
+            film/assets/pages/
+            orca/playwright-report/
+          retention-days: 7
+
+      - run: npm ci --prefer-offline --no-audit --no-fund
+        working-directory: film
+
+      - run: npx playwright install chromium
+        working-directory: film
+
+      - name: render
+        run: node render.mjs --workers 3
+        working-directory: film
+
+      - name: formats
+        run: node formats.mjs
+        working-directory: film
+
+      - name: release
+        working-directory: film
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          orca="$(git -C ../orca rev-parse HEAD)"
+          tag="film-$(date -u +%Y%m%d-%H%M)-${orca:0:7}"
+          gh release create "$tag" dist/* \
+            --title "Film $(date -u +%Y-%m-%d) from obsidian-orca ${orca:0:7}" \
+            --notes "The frames are real Obsidian on the sample book, taken from zachhannum/obsidian-orca at ${orca} (${ORCA_REF})."

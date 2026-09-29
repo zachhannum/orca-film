@@ -1,0 +1,7 @@
+node_modules/
+build/
+dist/
+*.mp4
+# Taken from obsidian-orca by `npm run frames`, never kept.
+assets/ui/
+assets/pages/

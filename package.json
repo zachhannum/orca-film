@@ -1,0 +1,14 @@
+{
+  "name": "orca-film",
+  "private": true,
+  "type": "module",
+  "description": "The orca film: frames of real Obsidian, an animation over them, and its score.",
+  "scripts": {
+    "render": "node render.mjs",
+    "formats": "node formats.mjs",
+    "stills": "node stills.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}
