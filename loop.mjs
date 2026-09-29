@@ -30,11 +30,12 @@ mkdirSync(OUT, { recursive: true });
 
 const ffmpeg = (...a) => execFileSync('ffmpeg', ['-loglevel', 'error', '-y', ...a], { stdio: 'inherit' });
 
-// How alike two clips are, from 0 to 1, or 0 when they differ in length.
+// How alike two clips are, from 0 to 1, or 0 when they differ in length
+// or in the color they are labelled with.
 function likeness(a, b) {
-  const frames = (f) => execFileSync('ffprobe', ['-v', 'error', '-count_packets', '-select_streams', 'v:0',
-    '-show_entries', 'stream=nb_read_packets', '-of', 'csv=p=0', f]).toString().trim();
-  if (frames(a) !== frames(b)) return 0;
+  const kind = (f) => execFileSync('ffprobe', ['-v', 'error', '-count_packets', '-select_streams', 'v:0',
+    '-show_entries', 'stream=nb_read_packets,color_transfer,color_space', '-of', 'csv=p=0', f]).toString().trim();
+  if (kind(a) !== kind(b)) return 0;
   const log = spawnSync('ffmpeg', ['-i', a, '-i', b, '-lavfi', 'ssim', '-f', 'null', '-'], { encoding: 'utf8' }).stderr;
   const all = log.match(/All:([\d.]+)/);
   return all ? +all[1] : 0;
@@ -46,7 +47,11 @@ for (const [scheme, ui] of Object.entries(SCHEMES)) {
     '--width', String(SIZE.width), '--height', String(SIZE.height), '--scale', String(SIZE.scale), '--out', master], { stdio: 'inherit' });
 
   const mp4 = `${OUT}/loop-${scheme}.mp4`;
+  // The frames are sRGB. A browser reads a clip labelled with BT.709's
+  // own curve darker in the shadows than the page around it, so the
+  // clip is labelled with the sRGB curve to match the pictures.
   ffmpeg('-i', master, '-an', '-c:v', 'libx264', '-profile:v', 'high', '-preset', 'veryslow', '-crf', '28', '-pix_fmt', 'yuv420p',
+    '-color_range', 'tv', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'iec61966-2-1',
     '-g', String(FPS * 2), '-movflags', '+faststart', mp4);
   const size = statSync(mp4).size;
   console.log(`${mp4}  ${(size / 1024 / 1024).toFixed(2)} MB`);

@@ -66,7 +66,10 @@ async function worker(w) {
   if (a >= b) return null;
   const page = await openPage(true);
   const seg = `build/segments/seg${String(w).padStart(2, '0')}.mp4`;
-  const vf = SUB > 1 ? ['-vf', `tmix=frames=${SUB}:weights=${Array(SUB).fill(1).join(' ')},select='eq(mod(n\\,${SUB})\\,${SUB - 1})',setpts=N/(${FPS}*TB)`] : [];
+  // The frames are sRGB, and are turned into video with the BT.709
+  // matrix the file is labelled with.
+  const blur = SUB > 1 ? [`tmix=frames=${SUB}:weights=${Array(SUB).fill(1).join(' ')},select='eq(mod(n\\,${SUB})\\,${SUB - 1})',setpts=N/(${FPS}*TB)`] : [];
+  const vf = ['-vf', [...blur, 'scale=out_color_matrix=bt709:out_range=tv', 'format=yuv420p'].join(',')];
   const ff = spawn('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'image2pipe', '-framerate', String(FPS * SUB), '-c:v', 'png', '-i', '-', ...vf,
     '-r', String(FPS), '-c:v', 'libx264', '-preset', 'slow', '-crf', '12', '-pix_fmt', 'yuv420p', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', seg], { stdio: ['pipe', 'inherit', 'inherit'] });
   const closed = new Promise((r) => ff.on('close', r));
