@@ -58,6 +58,12 @@ canvas.layer { width: 1920px; height: 1080px; }
 .cover { position: absolute; background: rgb(16, 19, 24); }
 .caret { position: absolute; width: 1.5px; background: #e9ece8; }
 
+/* The loop: the window alone, in the colors of the scheme its frames were taken in. */
+.loop #stage { width: 1200px; height: 750px; background: none; }
+.loop .ow { border-radius: 0; box-shadow: none; background: var(--cover); }
+.loop .cover { background: var(--cover); }
+.loop .caret { background: var(--caret); }
+
 /* Cursor. */
 #cursor { position: absolute; left: 0; top: 0; width: 40px; height: 40px; pointer-events: none; will-change: transform; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5)); }
 #cursor svg { position: absolute; left: 0; top: 0; }

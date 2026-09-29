@@ -1,7 +1,8 @@
 // The desk: one Obsidian window that stays on screen from writing to
 // export. Each section (write, design, CSS, export) adds its frames,
 // its camera keys and its caption, and the camera moves on without a
-// cut between them.
+// cut between them. In the loop the camera holds the whole window, and
+// the desk runs from the notes to the end of the loop.
 (function () {
   const O = window.O, E = O.E;
   O.sections = [];
@@ -9,7 +10,7 @@
 
   // The camera keys of every section, in time order.
   O.deskCam = () => {
-    if (!cam) cam = O.sections.flatMap((s) => s.cam).sort((a, b) => a[0] - b[0]);
+    if (!cam) cam = O.loop ? [[0, O.HOME]] : O.sections.flatMap((s) => s.cam).sort((a, b) => a[0] - b[0]);
     return cam;
   };
 
@@ -17,12 +18,18 @@
   O.deskMap = (t, p) => O.camMap(O.deskCam())(t, p);
 
   O.scenes.push({
-    id: 'desk', a: O.T.write[0], b: O.T.export[1], post: 0.1,
+    id: 'desk', a: O.loop ? O.T.notes[0] : O.T.write[0], b: O.loop ? O.T.last : O.T.export[1], post: 0.1,
     init() {
       const el = this.el;
       const names = [...new Set(O.sections.flatMap((s) => s.frames))];
       this.win = O.win(el, names);
       O.sections.forEach((s) => s.init && s.init(this.win));
+      if (O.loop) {
+        // The loop ends on the frame it starts on, over everything else.
+        this.seam = O.h(`<img class="ol" src="${O.UI}/notes.jpg" alt="">`);
+        this.win.el.appendChild(this.seam);
+        return;
+      }
       el.appendChild(O.h('<div class="shade"></div>'));
       O.sections.forEach((s) => {
         s.caption = O.caption(s.cap);
@@ -32,19 +39,24 @@
     },
     update(t) {
       const [A, B] = [this.a, this.b];
+      if (O.loop) {
+        this.seam.style.opacity = E.inOutQuad(O.prog(t, B - O.SEAM, B - 1 / O.FPS));
+      }
       // In: the window rises into place. Out: it falls away into the
       // pages the export wrote.
       const ki = E.outCubic(O.prog(t, A, A + 0.8));
       const ko = E.inCubic(O.prog(t, B - 0.55, B + 0.1));
-      this.el.style.opacity = Math.min(ki, 1 - ko);
-      this.el.style.transformOrigin = '1240px 540px';
-      this.el.style.transform = `translate3d(0,${(1 - ki) * 50}px,0) scale(${O.lerp(1, 0.86, ko)})`;
+      if (!O.loop) {
+        this.el.style.opacity = Math.min(ki, 1 - ko);
+        this.el.style.transformOrigin = '1240px 540px';
+        this.el.style.transform = `translate3d(0,${(1 - ki) * 50}px,0) scale(${O.lerp(1, 0.86, ko)})`;
+      }
 
       this.win.camera(t, O.deskCam());
       const on = O.sections.find((s) => t < s.b) || O.sections[O.sections.length - 1];
       this.win.show(on.show(t));
       O.sections.forEach((s) => {
-        s.caption.update(t, s.capIn, s.capOut);
+        if (s.caption) s.caption.update(t, s.capIn, s.capOut);
         if (s.update) s.update(t, this.win, s === on);
       });
     },
