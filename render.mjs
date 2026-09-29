@@ -2,7 +2,9 @@
 // frame by seeking the timeline and taking a screenshot, in parallel
 // segments that ffmpeg joins at the end.
 //
-//   node render.mjs [--fps 60] [--workers 6] [--sub 2] [--from 0] [--to 58.125]
+//   node render.mjs [--fps 60] [--workers 6] [--sub 2] [--from 0] [--to 58.125] [--out orca.mp4] [--clean]
+//
+// --clean leaves out the film grain, for the GIF.
 //
 // --sub N renders N sub-frames per output frame and blends them, for
 // motion blur.
@@ -20,7 +22,7 @@ const FPS = +arg('fps', 60);
 const SUB = +arg('sub', 2);
 const WORKERS = +arg('workers', Math.max(2, Math.min(8, os.cpus().length - 2)));
 const OUT = arg('out', 'orca.mp4');
-const url = pathToFileURL('index.html').href + '?render=1';
+const url = pathToFileURL('index.html').href + '?render=1' + (process.argv.includes('--clean') ? '&clean=1' : '');
 
 mkdirSync('build/segments', { recursive: true });
 const browser = await chromium.launch({ args: ['--font-render-hinting=none', '--force-color-profile=srgb'] });

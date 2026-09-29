@@ -236,7 +236,7 @@
       if (on) s.update(t);
     }
     drawCursor(t);
-    gx.drawImage(noise[Math.floor(t * 24) % noise.length], 0, 0);
+    if (!O.clean) gx.drawImage(noise[Math.floor(t * 24) % noise.length], 0, 0);
     fade.style.opacity = Math.max(1 - O.tw(t, 0, 0.9, E.outQuad), O.tw(t, O.T.total - 1.1, O.T.total - 0.05, E.inQuad));
   };
 

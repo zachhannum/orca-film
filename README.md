@@ -1,5 +1,7 @@
 # Orca film
 
+![The film, from the notes to the PDF](media/orca.gif)
+
 A 54-second film about orca, drawn in HTML and JavaScript. Every frame is a function of time, so the page plays live and renders to video the same way. The score is synthesized with Web Audio from the same timeline, so each click, key and page flick lands on its frame.
 
 ## Files
@@ -12,7 +14,8 @@ A 54-second film about orca, drawn in HTML and JavaScript. Every frame is a func
 - `js/audio.js` holds the score and the sound effects.
 - `render.mjs` writes `orca.mp4`, at 1920 × 1080 and 60 fps with two sub-frames of motion blur per frame.
 - `stills.mjs` writes single frames to `build/stills/` for review.
-- `formats.mjs` writes every format a release carries to `dist/`, from `orca.mp4`.
+- `formats.mjs` writes every format a release carries to `dist/`, from `orca.mp4`. It also writes `orca.gif`, the film from the notes to the PDF, from a second render without the grain.
+- `media/orca.gif` is the GIF of the latest film, for a README. The film workflow commits it, and Git LFS keeps it.
 - `fonts/` holds copies of the site's faces, and Faune Display Bold Italic for the name. Faune is by Alice Savoie for the Cnap, under CC BY-ND.
 - `assets/ui/` holds the frames of the window, and `assets/pages/` holds the first pages of the PDF the film exports. `npm run film` in obsidian-orca takes both in real Obsidian on the sample book, and neither is kept in this repo. `assets/ui/frames.js` gives the box of each control the film clicks and each row of text it types.
 - `ref/` holds the screenshots of the site that set the look.
@@ -35,9 +38,17 @@ npx playwright install chromium
 node render.mjs                      # the whole film to orca.mp4
 node render.mjs --from 22 --to 30    # one section
 node stills.mjs 4 13.5 26.9          # frames at those times
-node formats.mjs                     # every release format to dist/
+node formats.mjs                     # every release format to dist/, with the GIF
 ```
 
 ## Release
 
 The film workflow builds the film from nothing. It checks out obsidian-orca at a ref, takes the frames, renders the film, and publishes `dist/` as a release. Start it from the Actions tab and give it the ref. An `orca-release` repository dispatch starts it too, with the ref in `client_payload.ref`.
+
+The workflow also commits the GIF to `media/orca.gif` on `main`. A README in another repository can show it from this address:
+
+```md
+![Orca](https://media.githubusercontent.com/media/zachhannum/orca-film/main/media/orca.gif)
+```
+
+Use the `media.githubusercontent.com` address, not `raw.githubusercontent.com`. Git LFS keeps the GIF, and the raw address gives the LFS pointer file, not the image.

@@ -3,6 +3,8 @@
   const O = window.O;
   const render = /render/.test(location.search);
   if (render) document.documentElement.classList.add('render');
+  // A clean render leaves out the grain, which a GIF cannot compress.
+  O.clean = /clean/.test(location.search);
   const stage = document.getElementById('stage');
 
   const FACES = [
