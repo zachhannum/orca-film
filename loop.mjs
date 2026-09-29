@@ -1,14 +1,20 @@
 // Renders the loop on the site's landing page, once per scheme, and
-// encodes each as an H.264 MP4, which every browser plays.
+// encodes each as an H.264 MP4, which every browser plays. Beside each
+// clip goes its poster: the loop's first frame, which the page shows
+// until the clip plays.
 //
-//   node loop.mjs [--into ../obsidian-orca/site/src/shots]
+//   node loop.mjs [--into ../obsidian-orca/site/src/shots] [--posters]
 //
 // --into copies the clips there, and leaves a clip that looks the same
 // as the one already there in place, so a run on another machine does
 // not rewrite a file nobody could tell apart.
+//
+// --posters takes the posters alone, which takes seconds, not minutes.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { chromium } from 'playwright';
 
 const SCHEMES = { dark: 'ui', light: 'ui-light' };
 // The hero is 1200 CSS pixels at its widest. At 1.6 times that the text
@@ -25,6 +31,7 @@ const arg = (k) => {
   return i > 0 ? process.argv[i + 1] : undefined;
 };
 const into = arg('into');
+const postersOnly = process.argv.includes('--posters');
 const OUT = 'dist/loop';
 mkdirSync(OUT, { recursive: true });
 
@@ -41,6 +48,35 @@ function likeness(a, b) {
   return all ? +all[1] : 0;
 }
 
+// Copies a file into the folder --into names, unless the one there is
+// the same.
+function keep(file, same) {
+  if (into === undefined) return;
+  const there = path.join(into, path.basename(file));
+  if (existsSync(there) && same(there, file)) {
+    console.log(`${there} is the same, and stays`);
+    return;
+  }
+  copyFileSync(file, there);
+  console.log(`wrote ${there}`);
+}
+
+// The poster is the page at the loop's first moment, at the size the
+// clip is rendered at.
+const browser = await chromium.launch({ args: ['--font-render-hinting=none', '--force-color-profile=srgb'] });
+for (const [scheme, ui] of Object.entries(SCHEMES)) {
+  const page = await browser.newPage({ viewport: { width: SIZE.width, height: SIZE.height }, deviceScaleFactor: SIZE.scale });
+  await page.goto(pathToFileURL('loop.html').href + `?render=1&ui=${ui}&fps=${FPS}`);
+  await page.evaluate(() => O.ready);
+  await page.evaluate(() => O.seek(0));
+  const poster = `${OUT}/loop-${scheme}.png`;
+  await page.screenshot({ path: poster });
+  await page.close();
+  keep(poster, (a, b) => readFileSync(a).equals(readFileSync(b)));
+}
+await browser.close();
+if (postersOnly) process.exit(0);
+
 for (const [scheme, ui] of Object.entries(SCHEMES)) {
   const master = `build/loop-${scheme}.mp4`;
   execFileSync('node', ['render.mjs', '--page', 'loop.html', '--query', `ui=${ui}`, '--fps', String(FPS), '--sub', '1', '--silent',
@@ -56,12 +92,5 @@ for (const [scheme, ui] of Object.entries(SCHEMES)) {
   const size = statSync(mp4).size;
   console.log(`${mp4}  ${(size / 1024 / 1024).toFixed(2)} MB`);
   if (size > MOST) throw new Error(`${mp4} is over ${MOST / 1024 / 1024} MB`);
-  if (into === undefined) continue;
-  const there = path.join(into, path.basename(mp4));
-  if (existsSync(there) && likeness(there, mp4) >= SAME) {
-    console.log(`${there} looks the same, and stays`);
-    continue;
-  }
-  copyFileSync(mp4, there);
-  console.log(`wrote ${there}`);
+  keep(mp4, (a, b) => likeness(a, b) >= SAME);
 }

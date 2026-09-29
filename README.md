@@ -49,7 +49,7 @@ The loop is the window alone, from the notes to the export, for the landing page
 - `loop.html` plays the loop in a browser. Add `?ui=ui-light` for the light scheme.
 - `js/loop.js` holds its clock. It plays the film's times and cuts the spans where only the film's camera moves.
 - `js/scenes/loop-notes.js` opens the loop on the book note, where a click opens the chapter.
-- `loop.mjs` renders the loop in both schemes to `dist/loop/`, as MP4. With `--into <folder>`, it copies each clip there unless it looks the same as the clip already there.
+- `loop.mjs` renders the loop in both schemes to `dist/loop/`, as MP4, with a poster of its first frame beside each clip. With `--into <folder>`, it copies each file there unless it is the same as the file already there. With `--posters`, it takes the posters alone.
 
 The film spec writes the light frames to `assets/ui-light/`. The shots workflow in obsidian-orca runs `loop.mjs` at a pinned commit of this repo.
 
